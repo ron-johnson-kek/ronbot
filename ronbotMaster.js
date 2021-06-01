@@ -104,7 +104,7 @@ client.on('message', (channel, tags, message, self) => {
 				sendMessage(channel, `TeaTime FeelsDonkMan`);
 			}
 		}
-		let sameRepliesChannel = [ '#ron__johnson_' '#minusinsanity'];
+		let sameRepliesChannel = [ '#ron__johnson_','#minusinsanity'];
 		let sameReplies = ['MegaLUL FBBlock'];
 		if(sameRepliesChannel.includes(channel)) {
 			for(reply of sameReplies) {
