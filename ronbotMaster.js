@@ -71,17 +71,17 @@ client.on('message', (channel, tags, message, self) => {
 
 	let cleanMessage = message.replace(blankchar, '').trim();
 	if(self) return;
-	if(cleanMessage.toLowerCase() === '&ping') {
+	if(cleanMessage.toLowerCase() === '-ping') {
 		let timeSeconds = (Date.now() - startTimeStamp) / 1000;
-		sendMessage(channel, `@${tags.username}, 👋 Okayeg running for ${timeSeconds.toFixed(2)}s`);
+		sendMessage(channel, `@${tags.username}, 👋 FeelsDankMan running for ${timeSeconds.toFixed(2)}s`);
 	}
-	if(cleanMessage.toLowerCase() === '&code') {
+	if(cleanMessage.toLowerCase() === '-code') {
 		let timeSeconds = (Date.now() - startTimeStamp) / 1000;
-		sendMessage(channel, `@${tags.username}, lidl code is here https://github.com/MagicHack/twitchbot`);
+		sendMessage(channel, `@${tags.username}, code can be found here https://github.com/ron-johnson-kek/ronbot`);
 	}
 	
 	if(tags.username !== client.getUsername()) {
-		let channelsNoPriority = [ '#pepto__bismol'];
+		let channelsNoPriority = [ '#ron__johnson_'];
 		donkUsername = '';
 		if(!channelsNoPriority.includes(channel)) {
 			for(donk of donkRepliesPriority) {
@@ -104,9 +104,8 @@ client.on('message', (channel, tags, message, self) => {
 				sendMessage(channel, `TeaTime FeelsDonkMan`);
 			}
 		}
-		let sameRepliesChannel = [ '#hackmagic', '#minusinsanity', '#pepto__bismol' ];
-		let sameReplies = ['DinkDonk', 'YEAHBUTBTTV', 'TrollDespair', 'MODS', 'monkaE', 'POGGERS', 'VeryPog', 
-		'MegaLUL FBBlock', 'hackerCD', ':)'];
+		let sameRepliesChannel = [ '#ron__johnson_' '#minusinsanity'];
+		let sameReplies = ['MegaLUL FBBlock'];
 		if(sameRepliesChannel.includes(channel)) {
 			for(reply of sameReplies) {
 				if(cleanMessage.startsWith(reply)) {
@@ -116,13 +115,13 @@ client.on('message', (channel, tags, message, self) => {
 			}
 		}
 		
-		if(trusted.includes(tags.username) && cleanMessage.startsWith('&say ')) {
+		if(trusted.includes(tags.username) && cleanMessage.startsWith('-say ')) {
 			sendMessage(channel, cleanMessage.substring(5));
 		}
 
 		if(trusted.includes(tags.username)) {
 			// whisper, todo
-			if(cleanMessage.startsWith('&w ')) {
+			if(cleanMessage.startsWith('-w ')) {
 				// = cleanMessage.substring(3).split(' ');
 			}
 		}
@@ -141,7 +140,7 @@ function sendMessage(channel, message) {
 	// TODO implement banphrase api
 	// Currently we treat the rate limit as global...
 	// TODO, implement per channel and mod/vip rate limit
-	let modSpamChannels = [ '#pepto__bismol' ]
+	let modSpamChannels = [ '#ron__johnson_' ]
 
 	let isMod = false;
 	if(typeof chattersRoles[channel].chatters.moderators !== 'undefined') {
