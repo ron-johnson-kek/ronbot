@@ -136,6 +136,14 @@ client.on("join", (channel, username, self) => {
 let modSpamMessageCounter = 0;
 let modSpamCounterTimeStampMs = 0;
 
+// Retries to send messages if they fail
+function sendMessageRetry(channel, message) {
+	if(!sendMessage(channel, message)) {
+		// retry after 300ms
+		setTimeout(sendMessageRetry, 300, channel, message);
+	}
+}
+
 function sendMessage(channel, message) {
 	// TODO implement banphrase api
 	// Currently we treat the rate limit as global...
@@ -162,7 +170,7 @@ function sendMessage(channel, message) {
 
 	if(!modSpam && Date.now() - lastMessageTimeStampMs < currentRate * 1000) {
 		console.log("Dropped message cause of rate limit Sadge");
-		return;
+		return false;
 	} else {
 		if(modSpam) {
 			if(Date.now() - modSpamCounterTimeStampMs > 30 * 1000) {
@@ -172,7 +180,7 @@ function sendMessage(channel, message) {
 			if(modSpamMessageCounter >= rateLimitMessagesMod - 5) {
 				// We keep a margin of a few messages to try to not get shadowbanned
 				console.log("Dropped cause of mod rate limit Sadeg");
-				return;
+				return false;
 			} else {
 				modSpamMessageCounter++;
 			}
@@ -184,6 +192,7 @@ function sendMessage(channel, message) {
 		}
 		lastSentMessage = message;
 		client.say(channel, message);
+		return true;
 	}
 }
 
