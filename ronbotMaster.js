@@ -1,6 +1,8 @@
 const fetch = require('node-fetch');
 const tmi = require('tmi.js');
 const fs = require('fs');
+const mysql = require('mysql'); 
+
 
 // Number of message that can be sent every 30 seconds
 const rateLimitMessages = 20; 
@@ -22,17 +24,31 @@ const startTimeStamp = Date.now();
 
 let username = '';
 let password = '';
+let mysqlPassword = '';
 
 try {
 	const data = fs.readFileSync(configFilePath, 'utf8')
 	configData = JSON.parse(data);
 	username = configData["username"];
 	password = configData["token"];
+	mysqlPassword = configData["mysqlPassword"];
 } catch (err) {
 	console.error(err);
 	console.log("Error, could not read config file. Quitting");
 	return 1;
 }
+
+//MYSQL Import
+var con = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: mysqlPassword 
+});
+
+con.connect(function(err) {
+  if (err) throw err;
+  console.log("Connected!");
+});
 
 const donkRepliesPriority = ['magichack_', 'g0ldfishbot', 'doo_dul']
 const trusted = [ 'ron__johnson_' ]
