@@ -2,7 +2,13 @@ const fetch = require('node-fetch');
 const tmi = require('tmi.js');
 const fs = require('fs');
 const mysql = require('mysql'); 
-
+const sfetch = require('sync-fetch')
+ 
+const metadata = sfetch('https://doi.org/10.7717/peerj-cs.214', {
+  headers: {
+    Accept: 'application/vnd.citationstyles.csl+json'
+  }
+}).json()
 
 // Number of message that can be sent every 30 seconds
 const rateLimitMessages = 20; 
@@ -32,7 +38,9 @@ try {
 	username = configData["username"];
 	password = configData["token"];
 	mysqlPassword = configData["mysqlPassword"];
+	weatherAPIkey = configData["weatherAPIkey"];
 } catch (err) {
+	console.error(typeof err + " " + err.message);
 	console.error(err);
 	console.log("Error, could not read config file. Quitting");
 	return 1;
@@ -50,7 +58,7 @@ con.connect(function(err) {
   console.log("Connected!");
 });
 
-const donkRepliesPriority = ['magichack_', 'g0ldfishbot', 'doo_dul']
+const donkRepliesPriority = ['magichack_']
 const trusted = [ 'ron__johnson_' ]
 
 const client = new tmi.Client({
@@ -69,10 +77,14 @@ const client = new tmi.Client({
 let channelsChatters = {};
 let chattersRoles= {};
 
+setInterval(getAllChatters, delayChatterRefresh * 1000);
 let lastMessageTimeStampMs = 0;
 let lastSentMessage = '';
 
 let lastChatterRefreshTimeStampMs = 0;
+
+let cityname = 'vancouver';
+let weatherDataTest = sfetch(`http://api.openweathermap.org/data/2.5/weather?q=${cityname}&appid=${weatherAPIkey}`, { }).text(); 
 
 client.connect().catch(console.error);
 client.on('message', (channel, tags, message, self) => {
@@ -101,8 +113,12 @@ client.on('message', (channel, tags, message, self) => {
 		sendMessage(channel, 'gachiHop test complete gachiHop')
 	}
 	
+	if(trusted.includes(tags.username) && cleanMessage.startsWith('-weather')) {
+		sendMessage(channel, `${weatherDataTest} cleanMessage.substring(5)`)
+	}
+	
 	if(tags.username !== client.getUsername()) {
-		let channelsNoPriority = [ '#ron__johnson_'];
+		let channelsNoPriority = [ '#pepto__bismol'];
 		donkUsername = '';
 		if(!channelsNoPriority.includes(channel)) {
 			for(donk of donkRepliesPriority) {
@@ -139,16 +155,21 @@ client.on('message', (channel, tags, message, self) => {
 		if(trusted.includes(tags.username) && cleanMessage.startsWith('-say ')) {
 			sendMessage(channel, cleanMessage.substring(5));
 		}
-
+		
 		if(trusted.includes(tags.username)) {
 			// whisper, todo
 			if(cleanMessage.startsWith('-w ')) {
 				// = cleanMessage.substring(3).split(' ');
 			}
-			if(cleanMessage.startsWith('-eval ')) {
+			if(message.startsWith('-eval ')) {
 				console.log("Eval monkaS");
-				let result = String(eval('(' + cleanMessage.substring('-eval '.length) + ')'));
-				sendMessageRetry(channel, result);
+				try {
+					let result = String(eval('(' + cleanMessage.substring('&eval '.length) + ')'));
+					sendMessageRetry(channel, result);
+				  } catch (e) {
+					console.error(e.message);
+					sendMessageRetry(channel, "Eval failed, check console for details.");
+				  }
 			}
 		}
 		
@@ -172,7 +193,7 @@ function sendMessageRetry(channel, message) {
 	}
 }
 
-let sentMessagesTS = new Array(rateLimitMessages).fill(Date.now());
+let sentMessagesTS = [];
 
 function sendMessage(channel, message) {
 	// TODO implement banphrase api
@@ -227,6 +248,7 @@ function sendMessage(channel, message) {
 }
 
 function getAllChatters() {
+	console.log("Dispatching chatters updates");
 	if(Date.now() - lastChatterRefreshTimeStampMs < delayChatterRefresh * 1000) {
 		return;
 	}
@@ -234,6 +256,14 @@ function getAllChatters() {
 	console.log("Updating all channel chatters");
 
 	let channels = client.getChannels();
+	// channels.forEach(getChatters);
+	// delay each channel refresh to space them out in the delay
+	let delay = delayChatterRefresh / channels.length;
+	for(i in channels) {
+		cDelay = i * delay;
+		console.log("Updating chatters for " + channels[i] + " in " + cDelay.toFixed(2) + "s");
+		setTimeout(getChatters, cDelay * 1000, channels[i]);
+	}
 	console.log(channels);
 	channels.forEach(getChatters);
 
@@ -273,6 +303,9 @@ function getChatters(channelName) {
 		}
 		channelsChatters[channelName] = chatters;
 		chattersRoles[channelName] = json;
+		}).catch((error) => {
+		console.error("Failed to get chatters list from tmi");
+		console.error(typeof error + " " + error.message);
 	});
 }
 
@@ -281,22 +314,3 @@ function prettySeconds(seconds) {
 	return new Date(1000 * seconds).toISOString().substr(11, 8).replace(/^[0:]+/, "");
 }
 
-function channelEmotes(emotes) {
-	// check which channels emotes come from and return them
-	let apiUrl = 'https://api.twitchemotes.com/api/v4/emotes?id='
-	for(e of emotes) {
-		apiUrl += e + ','
-	}
-	return new Promise((resolve, reject) => {
-		let channels = [];
-		let settings = { method: "Get" };
-		fetch(apiUrl, settings)
-		.then(res => res.json())
-		.then((json) => {
-			for(e of json) {
-				channels.push(e['channel_name']);
-			}
-			return resolve(channels);
-		})
-	});
-}
