@@ -31,6 +31,7 @@ const startTimeStamp = Date.now();
 let username = '';
 let password = '';
 let mysqlPassword = '';
+let weatherAPIkey = '';
 
 try {
 	const data = fs.readFileSync(configFilePath, 'utf8')
@@ -82,23 +83,23 @@ let lastMessageTimeStampMs = 0;
 let lastSentMessage = '';
 
 let lastChatterRefreshTimeStampMs = 0;
+let cityname = 'moscow';
+let weatherDataTest = sfetch(`http://api.openweathermap.org/data/2.5/weather?q=${cityname}&units=metric&&appid=${weatherAPIkey}`, { }).json().main.temp + "°C" ; 
 
-let cityname = 'vancouver';
-let weatherDataTest = sfetch(`http://api.openweathermap.org/data/2.5/weather?q=${cityname}&appid=${weatherAPIkey}`, { }).text(); 
 
 client.connect().catch(console.error);
 client.on('message', (channel, tags, message, self) => {
 	if(self) return;
 	// refresh chatter list if needed
 	getAllChatters();
+	
+	let cleanMessage = message.replace(blankchar, '').trim();
 
 	// ignore whispers for now
 	if(tags['message-type'] === 'whisper') {
 		console.log("ignored whisper");
 		return;
 	}
-
-	let cleanMessage = message.replace(blankchar, '').trim();
 
 	if(cleanMessage.toLowerCase() === '-ping') {
 		let timeSeconds = (Date.now() - startTimeStamp) / 1000;
@@ -113,8 +114,8 @@ client.on('message', (channel, tags, message, self) => {
 		sendMessage(channel, 'gachiHop test complete gachiHop')
 	}
 	
-	if(trusted.includes(tags.username) && cleanMessage.startsWith('-weather')) {
-		sendMessage(channel, `${weatherDataTest} cleanMessage.substring(5)`)
+	if(trusted.includes(tags.username) && cleanMessage.startsWith('-weather ')) {
+		sendMessage(channel, `${weatherDataTest}` + ` ${cityname}`)
 	}
 	
 	if(tags.username !== client.getUsername()) {
@@ -313,4 +314,3 @@ function prettySeconds(seconds) {
 	// return a formatted string days, hours, minutes, seconds
 	return new Date(1000 * seconds).toISOString().substr(11, 8).replace(/^[0:]+/, "");
 }
-
