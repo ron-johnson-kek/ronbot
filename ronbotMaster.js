@@ -83,9 +83,6 @@ let lastMessageTimeStampMs = 0;
 let lastSentMessage = '';
 
 let lastChatterRefreshTimeStampMs = 0;
-let cityname = 'moscow';
-let weatherDataTest = sfetch(`http://api.openweathermap.org/data/2.5/weather?q=${cityname}&units=metric&&appid=${weatherAPIkey}`, { }).json().main.temp + "°C" ; 
-
 
 client.connect().catch(console.error);
 client.on('message', (channel, tags, message, self) => {
@@ -110,12 +107,15 @@ client.on('message', (channel, tags, message, self) => {
 		sendMessage(channel, `@${tags.username}, code can be found here https://github.com/ron-johnson-kek/ronbot`);
 	}
 	
-	if(trusted.includes(tags.username) && cleanMessage.startsWith('test')) {
-		sendMessage(channel, 'gachiHop test complete gachiHop')
+	if(trusted.includes(tags.username) && cleanMessage.startsWith('-weather ')) {
+		let cityname = cleanMessage.substring(9);
+		let weatherDataTest = sfetch(`http://api.openweathermap.org/data/2.5/weather?q=${cityname}&units=metric&&appid=${weatherAPIkey}`, { }).json().main.temp + "°C"
+	
+		sendMessage(channel, `${weatherDataTest}` + ` ${cityname}` )
 	}
 	
-	if(trusted.includes(tags.username) && cleanMessage.startsWith('-weather ')) {
-		sendMessage(channel, `${weatherDataTest}` + ` ${cityname}`)
+	if(trusted.includes(tags.username) && cleanMessage.startsWith('test')) {
+		sendMessage(channel, 'gachiHop test complete gachiHop')
 	}
 	
 	if(tags.username !== client.getUsername()) {
