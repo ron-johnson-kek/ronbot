@@ -1,7 +1,14 @@
 const fetch = require('node-fetch');
-const sfetch = require('sync-fetch');
 const tmi = require('tmi.js');
 const fs = require('fs');
+const mysql = require('mysql'); 
+const sfetch = require('sync-fetch')
+ 
+const metadata = sfetch('https://doi.org/10.7717/peerj-cs.214', {
+  headers: {
+    Accept: 'application/vnd.citationstyles.csl+json'
+  }
+}).json()
 
 // Number of message that can be sent every 30 seconds
 const rateLimitMessages = 20; 
@@ -23,20 +30,34 @@ const startTimeStamp = Date.now();
 
 let username = '';
 let password = '';
+let mysqlPassword = '';
 
 try {
 	const data = fs.readFileSync(configFilePath, 'utf8')
 	configData = JSON.parse(data);
 	username = configData["username"];
 	password = configData["token"];
+	mysqlPassword = configData["mysqlPassword"];
 } catch (err) {
-	console.error(typeof err + " " + err.message);
+	console.error(err);
 	console.log("Error, could not read config file. Quitting");
 	return 1;
 }
 
-const donkRepliesPriority = ['g0ldfishbot', 'doo_dul', 'ron__bot']
-const trusted = [ 'hackmagic' ]
+//MYSQL Import
+var con = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: mysqlPassword 
+});
+
+con.connect(function(err) {
+  if (err) throw err;
+  console.log("Connected!");
+});
+
+const donkRepliesPriority = ['magichack_']
+const trusted = [ 'ron__johnson_' ]
 
 const client = new tmi.Client({
 	options: { debug: true, messagesLogLevel: "info" },
@@ -48,8 +69,7 @@ const client = new tmi.Client({
 		username: username,
 		password: password
 	},
-	channels: [ 'swushwoi', 'ron__bot', 'ron__johnson_', 'hackmagic', 'minusinsanity', 'katelynerika', 'pepto__bismol', 
-	'huwobot', 'dontkermitsueside']
+	channels: [ 'ron__bot', 'ron__johnson_','minusinsanity','pepto__bismol']
 });
 
 let channelsChatters = {};
@@ -58,30 +78,39 @@ let chattersRoles= {};
 let lastMessageTimeStampMs = 0;
 let lastSentMessage = '';
 
-// refresh all chatters peridically
-setInterval(getAllChatters, delayChatterRefresh * 1000);
+let lastChatterRefreshTimeStampMs = 0;
+
+let weatherDataTest = sfetch('http://api.openweathermap.org/data/2.5/forecast?id=524901&appid={APIkey}', { }).text(); 
 
 client.connect().catch(console.error);
 client.on('message', (channel, tags, message, self) => {
 	if(self) return;
+	// refresh chatter list if needed
+	getAllChatters();
+
 	// ignore whispers for now
 	if(tags['message-type'] === 'whisper') {
 		console.log("ignored whisper");
 		return;
 	}
+
 	let cleanMessage = message.replace(blankchar, '').trim();
 
-	checkIfRaid(tags, cleanMessage);
-	
-	if(cleanMessage.toLowerCase() === '&ping') {
+	if(cleanMessage.toLowerCase() === '-ping') {
 		let timeSeconds = (Date.now() - startTimeStamp) / 1000;
-		sendMessage(channel, `@${tags.username}, 👋 Okayeg running for ${prettySeconds(timeSeconds)}s`);
+		sendMessage(channel, `@${tags.username}, 👋 FeelsDankMan running for ${timeSeconds.toFixed(2)}s`);
 	}
-	if(cleanMessage.toLowerCase() === '&code') {
-		sendMessage(channel, `@${tags.username}, lidl code is here https://github.com/MagicHack/twitchbot`);
+	if(cleanMessage.toLowerCase() === '-code') {
+		let timeSeconds = (Date.now() - startTimeStamp) / 1000;
+		sendMessage(channel, `@${tags.username}, code can be found here https://github.com/ron-johnson-kek/ronbot`);
 	}
-	if(cleanMessage.toLowerCase() === '&tmi') {
-		sendMessage(channel, `@${tags.username}, tmijs docs : https://github.com/tmijs/docs/tree/gh-pages/_posts/v1.4.2`);
+	
+	if(trusted.includes(tags.username) && cleanMessage.startsWith('test')) {
+		sendMessage(channel, 'gachiHop test complete gachiHop')
+	}
+	
+	if(trusted.includes(tags.username) && cleanMessage.startsWith('-weather')) {
+		sendMessage(channel, `${weatherDataTest}`)
 	}
 	
 	if(tags.username !== client.getUsername()) {
@@ -108,13 +137,8 @@ client.on('message', (channel, tags, message, self) => {
 				sendMessage(channel, `TeaTime FeelsDonkMan`);
 			}
 		}
-		const newCommand = 'I made a new command HeyGuys';
-		if(cleanMessage.startsWith(newCommand)) {
-			sendMessage(channel, newCommand);
-		}
-		let sameRepliesChannel = [ '#hackmagic', '#pepto__bismol' ];
-		let sameReplies = ['DinkDonk', 'YEAHBUTBTTV', 'TrollDespair', 'MODS', 'monkaE', 'POGGERS', 'VeryPog', 
-		'MegaLUL FBBlock', 'hackerCD', ':)'];
+		let sameRepliesChannel = [ '#ron__johnson_','#minusinsanity'];
+		let sameReplies = ['MegaLUL FBBlock'];
 		if(sameRepliesChannel.includes(channel)) {
 			for(reply of sameReplies) {
 				if(cleanMessage.startsWith(reply)) {
@@ -124,74 +148,33 @@ client.on('message', (channel, tags, message, self) => {
 			}
 		}
 		
-		if(trusted.includes(tags.username) && cleanMessage.startsWith('&say ')) {
+		if(trusted.includes(tags.username) && cleanMessage.startsWith('-say ')) {
 			sendMessage(channel, cleanMessage.substring(5));
 		}
-
+		
 		if(trusted.includes(tags.username)) {
 			// whisper, todo
-			if(cleanMessage.startsWith('&w ')) {
+			if(cleanMessage.startsWith('-w ')) {
 				// = cleanMessage.substring(3).split(' ');
 			}
-			if(cleanMessage.startsWith('&eval ')) {
-				console.log("Eval monkaGIGA");
-				try {
-					let result = String(eval('(' + cleanMessage.substring('&eval '.length) + ')'));
-					sendMessageRetry(channel, result);
-				  } catch (e) {
-					console.error(e.message);
-					sendMessageRetry(channel, "Eval failed, check console for details.");
-				  }
+			if(message.startsWith('-eval ')) {
+				console.log("Eval monkaS");
+				let result = String(eval('(' + message.substring('-eval '.length) + ')'));
+				sendMessageRetry(channel, result);
 			}
 		}
-
-		if(tags.emotes !== null) {
-			channelEmotes(Object.keys(tags.emotes)).then((res) => {
-				let cemotes = res;
-				if(cemotes.length > 0) {
-					console.log(cemotes);
-				}
-				/*
-				if(channel === '#ron__bot') {
-					sendMessageRetry(channel, String(cemotes));
-				}
-				if(channel === '#swushwoi' && cemotes.includes('xqcow')) {
-					sendMessageRetry(channel, "MODS xqc emote detected MrDestructoid");
-				}
-				*/
-			})
-		}
+		
 	}
 });
 
 client.on("join", (channel, username, self) => {
-	if(typeof channelsChatters[channel] === 'undefined') {
+    if(typeof channelsChatters[channel] === 'undefined') {
 		getChatters(channel);
 	}
 });
 
-function checkIfRaid(tags, message) {
-	let notifyChannels = ['#minusinsanity', '#hackmagic'];
-	let peopleToNotify = [ 'hackmagic', 'prog0ldfish'];
-	if(tags.username === 'huwobot') {
-		if(/A Raid Event at Level \[[0-9]+\] has appeared./.test(message)) {
-			console.log("Raid detected");
-			for(notifyChannel of notifyChannels) {
-				let notifMessage = '';
-				for(p of peopleToNotify) {
-					if(channelsChatters[notifyChannel].includes(p)) {
-						notifMessage += ' @' + p ;
-					}
-				}
-				if(notifMessage.length !== 0) {
-					sendMessageRetry(notifyChannel, 'DinkDonk +join' + notifMessage);
-				} else {
-					console.log("No one to notify Sadge");
-				}
-			}
-		}
-	}
-}
+let modSpamMessageCounter = 0;
+let modSpamCounterTimeStampMs = 0;
 
 // Retries to send messages if they fail
 function sendMessageRetry(channel, message) {
@@ -201,20 +184,16 @@ function sendMessageRetry(channel, message) {
 	}
 }
 
-// We assume normal bucket is full on start, maybe we it should be mod bucket?
-let sentMessagesTS = new Array(rateLimitMessages).fill(Date.now());
+let sentMessagesTS = [];
 
 function sendMessage(channel, message) {
-	const charLimit = 500;
 	// TODO implement banphrase api
-
-	// We implement rate limit as a sliding window, 
-	// (last refill is now - 30seconds) to never go over the limit
-	// We remove timestamps older then 30 second (+1 for safety margin)
+	// Currently we treat the rate limit as global...
+	// TODO, implement per channel and mod/vip rate limit
 	sentMessagesTS = sentMessagesTS.filter(ts => Date.now() - ts < (30 + 1) * 1000);
 	let messageCounter = sentMessagesTS.length;
-
-	let modSpamChannels = [ '#pepto__bismol' ]
+	
+	let modSpamChannels = [ '#ron__bot' ]
 
 	let isMod = false;
 	if(typeof chattersRoles[channel].chatters.moderators !== 'undefined') {
@@ -222,17 +201,14 @@ function sendMessage(channel, message) {
 	} else {
 		console.log("Couldn't check role");
 	}
-
 	let modSpam = false;
-
 	let currentRate = rateLimitDelay;
 	let currentLimit = rateLimitMessages;
-
 	if(isMod) {
 		console.log("using mod rate limit");
 		currentRate = rateLimitDelayMod;
 		currentLimit = rateLimitMessagesMod;
-
+		
 		if(modSpamChannels.includes(channel)) {
 			modSpam = true;
 			console.log("Mod spam enabled TriHard");
@@ -240,9 +216,7 @@ function sendMessage(channel, message) {
 	}
 
 	if(!modSpam && Date.now() - lastMessageTimeStampMs < currentRate * 1000) {
-		// We send messages at most every 30s/ratelimit, another mesure to not go over the rate limit
-		// except in channel where mod spam is enabled.
-		console.log("Dropped message cause we are sending too fast");
+		console.log("Dropped message cause of rate limit Sadge");
 		return false;
 	} else {
 		console.log("Current message counter is : " + messageCounter);
@@ -252,37 +226,29 @@ function sendMessage(channel, message) {
 			console.log("Dropped message cause we are approching max number of message every 30s");
 			return false;
 		}
-		// We add the current timestamp to the sliding window
 		sentMessagesTS.push(Date.now());
 		lastMessageTimeStampMs = Date.now();
-
-		// Add random char after to not trigger same message rejection
+		// Add random char after to not trigger same message protection
 		if(lastSentMessage === message) {
 			message += ' ' + blankchar;
 		}
 		lastSentMessage = message;
-		if(message.length > charLimit) {
-			// TODO : implement sending in multiple messages, maybe with a message queue?
-			console.log("Message too long (" + message.length + " chars), truncating it");
-			message = message.substring(0, charLimit - 5) + ' ...';
-		}
 		client.say(channel, message);
 		return true;
 	}
 }
 
 function getAllChatters() {
-	console.log("Dispatching chatters updates");
+	if(Date.now() - lastChatterRefreshTimeStampMs < delayChatterRefresh * 1000) {
+		return;
+	}
+	lastChatterRefreshTimeStampMs = Date.now();
+	console.log("Updating all channel chatters");
 
 	let channels = client.getChannels();
-	// channels.forEach(getChatters);
-	// delay each channel refresh to space them out in the delay
-	let delay = delayChatterRefresh / channels.length;
-	for(i in channels) {
-		cDelay = i * delay;
-		console.log("Updating chatters for " + channels[i] + " in " + cDelay.toFixed(2) + "s");
-		setTimeout(getChatters, cDelay * 1000, channels[i]);
-	}
+	console.log(channels);
+	channels.forEach(getChatters);
+
 }
 
 function getChatters(channelName) {
@@ -319,9 +285,6 @@ function getChatters(channelName) {
 		}
 		channelsChatters[channelName] = chatters;
 		chattersRoles[channelName] = json;
-	}).catch((error) => {
-		console.error("Failed to get chatters list from tmi");
-		console.error(typeof error + " " + error.message);
 	});
 }
 
@@ -332,8 +295,6 @@ function prettySeconds(seconds) {
 
 function channelEmotes(emotes) {
 	// check which channels emotes come from and return them
-
-	// TODO : cache emote results for at least 30 minutes (api refresh rate) to not abuse the api
 	let apiUrl = 'https://api.twitchemotes.com/api/v4/emotes?id='
 	for(e of emotes) {
 		apiUrl += e + ','
@@ -345,16 +306,10 @@ function channelEmotes(emotes) {
 		.then(res => res.json())
 		.then((json) => {
 			for(e of json) {
-				if(e['channel_name'] !== null) {
-					channels.push(e['channel_name']);
-				}
+				channels.push(e['channel_name']);
 			}
 			return resolve(channels);
-		}).catch((error) => {
-			console.error("Failed to get emote info from twitchemotes api");
-			console.error(typeof error + " " + error.message);
-			// Idk, maybe we should reject eShrug
-			return resolve(channels);
-		});
+		})
 	});
 }
+
